@@ -1,0 +1,142 @@
+
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Sep 28 17:47:33 2016
+
+@author: Christian W
+"""
+import pandas as pd
+import math
+
+#This is the file path in my computer. Change it to any other filepath and ensure the file is in xlsx format.
+testfile = "C:\\Users\\Christian W\\Desktop\\Christian_Layoffs.xlsx"
+
+
+# A function that makes all possible n-length strings from any firm name and
+#checks to see if two firms names mostly match each other (for imperfect firm name entering)
+
+#Note the pattern-matching window size is arbitraily 6--you could increase or decrease
+
+#In the rep function I am trying to delete all common words out of the company names soas to compare only
+#unique names and not match erroneously
+
+def windowMatch(wsize, firmA, firmB):
+    
+    def rep(string):
+        string = string.replace("Corporation", "corp").replace("University", '').replace("Public", '').replace("Pharmaceutical",'')
+        string = string.replace("State", '').replace("State of", '').replace("Services", '').replace("Energy", 'en').replace(' ', '')
+        string = string.replace("Company", "co").replace("Technolog", "tech").replace("School", "sc").replace('(listedon:NYSE)','').replace("county",'')
+        return(string)
+        
+    firmA = str(firmA)
+    firmB = str(firmB)
+    firmA = rep(firmA)
+    firmB = rep(firmB)
+    count = 0
+    setA = set()
+    setB = set()
+    
+    while count <= max(len(firmA), len(firmB)):
+        
+        try:
+            
+            if len(firmA[count:wsize + count]) >= 6:
+                setA.add(firmA[count:wsize + count])
+                
+            if len(firmB[count:wsize + count]) >= 6:            
+                setB.add(firmB[count:wsize + count])
+            
+        except IndexError:
+            pass
+        
+        count += 1
+        
+    if len(list(setA & setB)) >= 1:
+        return("YES")
+        
+    else:
+        return("NO")
+        
+        
+        
+# A function that iterates through an excel file adding a (firm name, # of layoffs) tuple
+# to a set and marks all duplicate rows whose name/layoff number exists already in the set
+        
+#This is designed to run on an individual sheet -- sheetname would be "christian" or "meiling"
+#Though I think it would be super easy to adopt the methodology to do two sheets at once and comparisons
+
+def postprocessor(filename, firmHead, numHead, sheet):
+    
+    testfile = pd.read_excel(filename, header = 0, sheetname = sheet)
+    nameNums = set()
+    window = 6
+    doubles = []
+    
+    #Iterate through rows and delete doubles
+    
+    for index, row in testfile.iterrows():
+
+        try:
+            layoff = math.isnan(row[firmHead])
+            if layoff == True:
+                pass
+            
+        except TypeError:
+                temp1 = (row[firmHead], row[numHead])
+                
+                if temp1 in nameNums:
+                    nameNums.add((index+2, "DELETE"))
+                    testfile.set_value(index, firmHead, "DELETE")
+
+                else:
+                    match = "no"
+                    for triple in nameNums:
+                        
+                        if (windowMatch(window ,temp1[0], triple[0]) == "YES" and temp1[1] == triple[1]):
+                            nameNums.add((index +2,"Delete"))
+                            doubles.append([triple,temp1])
+                            testfile.set_value(index, firmHead, "DELETE")
+                            match = "yes"
+                            break
+                        
+                    if match == "no":
+                        nameNums.add(temp1)
+                        
+    #save to excel file --the first file highlights all double rows, the second file deletes them 
+    writer = pd.ExcelWriter('layoffsdeletedHL.xlsx', engine='xlsxwriter')
+    testfile.to_excel(writer, sheet_name='christian')
+    worksheet = writer.sheets["christian"]
+    workbook = writer.book
+    y_format = workbook.add_format({'bg_color':   '#FFEB9C','font_color': '#9C6500'})
+    worksheet.conditional_format('S1:S2713', {'type': 'text', 'criteria' : 'containing', 'value' : 'DELETE', 'format': y_format})
+    writer.save() 
+    
+
+    cleanedFile = testfile.loc[~(testfile[firmHead] == "DELETE")]     
+    writer1 = pd.ExcelWriter('layoffsdeleted.xlsx', engine='xlsxwriter')
+    cleanedFile.to_excel(writer1, sheet_name='christian')
+    writer1.save()     
+    
+    #All the doubles found by the function
+    print(doubles)
+    
+    return(nameNums)
+                        
+
+
+
+
+newset = postprocessor(testfile, "Selected Entity", "Number of Layoffs","christian") 
+
+
+#A list of all deleted indices
+l = list()
+for a in newset:
+    print(a)
+    if "DELETE" in a:
+        l.append(a[0])
+
+#List of deleted indices and number of deleted doubles
+print(l)
+len(l)
+
