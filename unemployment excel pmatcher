@@ -4,21 +4,26 @@
 Created on Wed Sep 28 17:47:33 2016
 
 @author: Christian W
+
+This script can be used to find all of the rows which are doubles (ie: rows that report a layoff event that has already been reported
+It is crafted for use on the unemployment dataset that is released each week. This script can either mark or delete doubles rows based on preferences.
 """
+
+
 import pandas as pd
 import math
 
-#This is the file path in my computer. Change it to any other filepath and ensure the file is in xlsx format.
+# This is the file path in my computer. Change it to any other filepath and ensure the file is in xlsx format.
 testfile = "C:\\Users\\Christian W\\Desktop\\Christian_Layoffs.xlsx"
 
 
 # A function that makes all possible n-length strings from any firm name and
 #checks to see if two firms names mostly match each other (for imperfect firm name entering)
 
-#Note the pattern-matching window size is arbitraily 6--you could increase or decrease
+# Note the pattern-matching window size is arbitraily 6--you could increase or decrease
 
-#In the rep function I am trying to delete all common words out of the company names soas to compare only
-#unique names and not match erroneously
+# In the rep function I am trying to delete all common words out of the company names soas to compare only
+# unique names and not match erroneously
 
 def windowMatch(wsize, firmA, firmB):
     
